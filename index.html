@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Herramienta de testing</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+    <div class="container">
+        <h1>Herramienta de testing</h1>
+        <form onsubmit="submitForm(event)">
+            <h2>Elija el archivo con el codigo a analizar</h2>
+            <input type="file" accept="text/plain" onchange="openFile(event)" required />
+            <h2>Seleccione el metodo a analizar</h2>
+            <select id="methodSelect" disabled onchange="updateMethodSelect()">
+              </select>
+            <div id="methodCode" class="methodCode">
+            </div>
+            <h2>Seleccione lo que desea analizar</h2>
+            <select id="optionsSelect" disabled>
+          <option value="linesAnalysis">Analisis lineas</option>
+          <option value="cyclomaticComplexity">Complejidad ciclomatica</option>
+          <option value="fanInOut">Fan in/out</option>
+          <option value="halstead">Halstead</option>
+        </select>
+            <input id="submitButton" type="submit" value="Analizar" disabled>
+        </form>
+
+        <!-- Old -->
+        <!-- <form>
+            <textarea name="code" rows="20" cols="80" id="code" required form placeholder="Los metodos del mismo deberan tener el siguiente formato: 
+                        
+                        public void metodo() {
+                            line1
+                            line2
+                            // comment
+                            /* comments
+                            comments
+                            */
+
+
+                            if(a > 3) {
+                                b = 2;
+                            }
+                        }"></textarea>
+            <br>
+            <input type="submit" id="submitButton" value="Analizar codigo" class="button">
+            <input type="button" id="clearCodeButton" value="Borrar" class="button">
+        </form> -->
+
+        <div id="resultsList" class="resultsList"></div>
+    </div>
+</body>
+
+</html>
+
+<script>
+    // const submitBtn = document.getElementById("submitBtn");
+
+    // document.getElementById("submitButton").addEventListener("click", function(e) {
+    //     e.preventDefault();
+    //     const code = document.getElementById("code").value;
+    //     resultsList.innerHTML = ''
+    //     methods = [];
+    //     analizeCode(code);
+    // })
+
+    // document.getElementById("clearCodeButton").addEventListener("click", function(e) {
+    //     e.preventDefault();
+    //     document.getElementById("code").value = ''
+    // })
+
+    // submitBtn.onclick = (event) => {
+    //     event.preventDefault();
+    //     // show the selected index
+    //     // alert(sb.selectedIndex);
+    // };
+
+    let methods = [];
+    let rawCode;
+    const resultsList = document.getElementById("resultsList");
+    const methodSelect = document.getElementById("methodSelect");
+    const optionsSelect = document.getElementById("optionsSelect");
+    const submitButton = document.getElementById("submitButton");
+    const methodCode = document.getElementById("methodCode");
+
+    // Open file and get code
+    function openFile(e) {
+        e.preventDefault();
+        var input = e.target;
+
+        var reader = new FileReader();
+        reader.onload = function() {
+            var codeFromFile = reader.result;
+            var node = document.getElementById('output');
+            rawCode = codeFromFile.replace(/(\r)/gm, "");
+            rawCode = rawCode.split("\n");
+            setMethodNamesInSelect(rawCode);
+        };
+        reader.readAsText(input.files[0]);
+    };
+
+    function updateMethodSelect() {
+        const selectedMethod = methodSelect.value;
+        const methodToAnalyze = methods.find(method => method.name === selectedMethod);
+        methodCode.innerHTML = `<h4>Codigo del metodo</h4>`
+        methodToAnalyze.code.forEach(line => {
+            methodCode.innerHTML += `<p>${line}</p>`
+        });
+    }
+
+    // Set method names in select
+    const setMethodNamesInSelect = (code) => {
+        findMethods(code);
+        if (methods.length > 0) {
+            resultsList.innerHTML = ``;
+            methodSelect.length = 0;
+            methodSelect.removeAttribute("disabled");
+            methods.forEach(method => {
+                methodSelect.options.add(new Option(method.name, method.name))
+            });
+            optionsSelect.removeAttribute("disabled");
+            submitButton.removeAttribute("disabled");
+            updateMethodSelect();
+        } else {
+            alert("El codigo ingresado no posee metodos para analizar");
+        }
+    }
+
+    // Find methods in code
+    const findMethods = (codeLines) => {
+        methods = [];
+        let stack = [];
+        let j = 0;
+        let methodLines = [];
+        for (let i = 0; i < codeLines.length; i++) {
+            if (isMethod(codeLines[i])) {
+                stack.push("{");
+                j = i + 1;
+                while (stack.length > 0) {
+                    methodLines.push(codeLines[j]);
+                    if (codeLines[j].includes("{")) {
+                        stack.push("{");
+                    }
+                    if (codeLines[j].includes("}")) {
+                        stack.pop();
+                    }
+
+                    j++;
+                }
+                let methodName = getMethodName(codeLines[i]);
+                const method = {
+                    startline: i,
+                    startLine: i,
+                    code: methodLines,
+                    methodDeclaration: codeLines[i],
+                    name: methodName,
+                };
+                methods.push(method);
+
+                methodLines = [];
+            }
+        }
+    };
+
+    // Evaluate if line is a method
+    const isMethod = (codeLine) => {
+        // let METHOD_REGEX = new RegExp(/(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;]){/)
+        let METHOD_REGEX = new RegExp(
+            /(public|protected|private|static|\s) +[\w\<\>\[\]]+\s+(\w+) *\([^\)]*\) *(\{?|[^;])+[?\w\<\>\[\]]?\s*{/
+        );
+        return METHOD_REGEX.test(codeLine);
+    };
+
+    // Get the method name
+    const getMethodName = (method) => {
+        let METHOD_NAME_REGEX = new RegExp(/([a-zA-Z_{1}][a-zA-Z0-9_]+)(?=\()/);
+        const match = METHOD_NAME_REGEX.exec(method);
+        return match ? match[0] : null;
+    };
+
+    // Determine which thing the user wants to analyze
+    function submitForm(e) {
+        e.preventDefault();
+        const selectedInput = optionsSelect.value;
+        const selectedMethod = methodSelect.value;
+        const methodToAnalyze = methods.find(method => method.name === selectedMethod);
+        if (!rawCode) {
+            alert("Hubo un error al intentar obtener el codigo del archivo. Por favor intente nuevamente");
+        } else {
+            resultsList.innerHTML = ``;
+            analizeMethod(methodToAnalyze, rawCode, selectedInput);
+        }
+    }
+
+    const getTotalLines = (code) => {
+        return code.length - 1;
+    };
+
+    const getCommentedLines = (code) => {
+        let cantComentarios = 0;
+        for (let i = 0; i < code.length - 1; i++) {
+            if (code[i].includes("//")) {
+                cantComentarios++;
+            }
+            if (code[i].includes("/*")) {
+                while (!code[i].includes("*/")) {
+                    cantComentarios++;
+                    i++;
+                }
+            }
+        }
+        return cantComentarios;
+    };
+
+    const getOnlyCodeLines = (code, rest) => {
+        return code.length - rest - 1;
+    };
+
+    const getEmptyLines = (code) => {
+        let emptyLinesAmount = 0;
+        for (let i = 0; i < code.length - 1; i++) {
+            if (code[i].trim().length === 0) {
+                emptyLinesAmount++;
+            }
+        }
+        return emptyLinesAmount;
+    };
+
+    const getCommentsPercentage = (commentsAmount, codeLinesAmount) => {
+        const percentage = Math.trunc((commentsAmount / codeLinesAmount) * 100);
+        return isNaN(percentage) ? 0 : percentage;
+    };
+
+    const calculateCiclomaticComplexity = (code) => {
+        let nodes = 0;
+        code.forEach((line) => {
+            if (
+                line.includes("if(") ||
+                line.includes("if (") ||
+                line.includes("for (") ||
+                line.includes("for(") ||
+                line.includes("while(") ||
+                line.includes("while (")
+            ) {
+                if (line.includes("||") || line.includes("&&")) {
+                    let andCount = (line.match(/\&\&/g) || []).length;
+                    let orCount = (line.match(/\|\|/g) || []).length;
+                    andCount >= 1 ? (nodes += andCount + 1) : null;
+                    orCount >= 1 ? (nodes += orCount + 1) : null;
+                } else {
+                    nodes++;
+                }
+            } else if (line.includes("case")) {
+                nodes++;
+            }
+        });
+
+        return nodes + 1;
+    };
+
+    const getMethodNames = (methods) => {
+        return methods.map((method) => method.name);
+    };
+
+    const calculateFanOut = (code) => {
+        const methodNames = getMethodNames(methods);
+        let fanOut = 0;
+        for (let i = 0; i < code.length - 1; i++) {
+            methodNames.forEach((name) => {
+                let expression = `\\b(${name})+\\s*\\((.*)\\)?;$`;
+                let METHOD_CALL_REGEX = new RegExp(expression, "g");
+                if (METHOD_CALL_REGEX.test(code[i])) {
+                    fanOut++;
+                }
+            });
+        }
+        return fanOut;
+    };
+
+    const calculateFanIn = (methodName, code) => {
+        let fanIn = 0;
+        // let expression = `\\b(${methodName})+\\((.*)\\)$`;
+        let expression = `\\b(${methodName})+\\s*\\((.*)\\)?;$`;
+        let METHOD_CALLED_REGEX = new RegExp(expression, "g");
+
+        for (let i = 0; i < code.length; i++) {
+            if (METHOD_CALLED_REGEX.test(code[i])) {
+                fanIn++;
+            }
+        }
+
+        if (fanIn >= 10) {
+            alert(`El fanIn para el metodo ${methodName} es alto. Metodo critico/`);
+        }
+        return fanIn;
+    };
+
+    const calculateHalsteadMetrics = (code) => {
+        // Palabras reservadas del lenguanje
+        const operadores = [
+            "{",
+            "}",
+            "++",
+            "+=",
+            "*",
+            "[",
+            "(",
+            ")",
+            "]",
+            "--",
+            "==",
+            "!=",
+            "<=",
+            ">=",
+            "<",
+            ">",
+            ";",
+            "&&",
+            "|",
+            "+",
+            "-",
+            ",",
+            "=",
+            "if",
+            "for",
+            "while",
+            "switch",
+        ];
+        let VARIABLE_REGEX = new RegExp(
+            /(int|double|String|boolean|char|\s)\s+(\w+)*/
+        );
+        let operadoresUnicos = [];
+        let operandosUnicos = [];
+        let N1 = 0;
+        let N2 = 0;
+
+        for (let i = 0; i < code.length - 1; i++) {
+            let operatorMatches = operadores.filter((operator) =>
+                code[i].includes(operator)
+            );
+            let isValidOperand = VARIABLE_REGEX.exec(code[i]);
+            if (isValidOperand) {
+                N2++;
+                const temp = isValidOperand[0].split(" ");
+                const operandName = temp[1];
+                if (!operandosUnicos.find((operando) => operando === operandName)) {
+                    operandosUnicos.push(operandName);
+                }
+            }
+            if (operatorMatches) {
+                N1 += operatorMatches.length;
+                operatorMatches.forEach((match) => {
+                    if (!operadoresUnicos.find((operador) => operador === match)) {
+                        operadoresUnicos.push(match);
+                    }
+                });
+            }
+        }
+
+        let n1 = operadoresUnicos.length;
+        let n2 = operandosUnicos.length;
+
+        let N = N1 + N2; // longitud
+        let n = n1 + n2;
+        let volumen = (N * Math.log2(n)).toFixed(2); // volumen
+        return {
+            longitud: N,
+            volumen,
+        };
+    };
+
+    const analizeMethod = (method, code, selectedInput) => {
+        let results = null;
+        let totalLinesAmount, commentsAmount, emptyLinesAmount, codeLinesAmount, commentPercentaje;
+        results = "<div>" +
+            "<h4>" +
+            `ANALISIS DEL METODO "${method.name}"` +
+            "</h4>"
+        switch (selectedInput) {
+            case 'linesAnalysis':
+                totalLinesAmount = getTotalLines(method.code);
+                commentsAmount = getCommentedLines(method.code);
+                emptyLinesAmount = getEmptyLines(method.code);
+                codeLinesAmount = getOnlyCodeLines(
+                    method.code,
+                    commentsAmount + emptyLinesAmount
+                );
+                const commentPercentaje = getCommentsPercentage(
+                    commentsAmount,
+                    totalLinesAmount
+                );
+                results +=
+                    "<p>" + `Cantidad de lineas totales: ${totalLinesAmount}` + "</p>" +
+                    "<p>" + `Cantidad de lineas comentadas: ${commentsAmount}` + "</p>" +
+                    "<p>" + `Cantidad de lineas en blanco: ${emptyLinesAmount}` + "</p>" +
+                    "<p>" + `Cantidad de lineas de solo codigo: ${codeLinesAmount}` + "</p>" +
+                    "<p>" + `Porcentaje de comentarios: % ${commentPercentaje}` + "</p>"
+                break;
+            case 'cyclomaticComplexity':
+                const complexity = calculateCiclomaticComplexity(method.code);
+                results += "<p>" + `Complejidad ciclomatica: ${complexity}` + "</p>"
+                break;
+            case 'fanInOut':
+                const fanOut = calculateFanOut(method.code);
+                const fanIn = calculateFanIn(method.name, code);
+                results += "<p>" + `Fan in: ${fanIn}` + "</p>" +
+                    "<p>" + `Fan out: ${fanOut}` + "</p>"
+                break;
+            case 'halstead':
+                const {
+                    longitud,
+                    volumen
+                } = calculateHalsteadMetrics(method.code);
+                results +=
+                    "<p>" + `Halstead - longitud: ${longitud}` + "</p>" +
+                    "<p>" + `Halstead - volumen: ${volumen}` + "</p>"
+                break;
+        }
+
+        results += "</div>";
+        resultsList.innerHTML += `<div>${results}</div>`;
+        resultsList.style.visibility = "visible";
+    };
+</script>

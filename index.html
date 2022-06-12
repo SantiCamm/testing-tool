@@ -19,13 +19,6 @@
               </select>
             <div id="methodCode" class="methodCode">
             </div>
-            <h2>Seleccione lo que desea analizar</h2>
-            <select id="optionsSelect" disabled>
-          <option value="linesAnalysis">Analisis lineas</option>
-          <option value="cyclomaticComplexity">Complejidad ciclomatica</option>
-          <option value="fanInOut">Fan in/out</option>
-          <option value="halstead">Halstead</option>
-        </select>
             <input id="submitButton" type="submit" value="Analizar" disabled>
         </form>
 
@@ -83,7 +76,6 @@
     let rawCode;
     const resultsList = document.getElementById("resultsList");
     const methodSelect = document.getElementById("methodSelect");
-    const optionsSelect = document.getElementById("optionsSelect");
     const submitButton = document.getElementById("submitButton");
     const methodCode = document.getElementById("methodCode");
 
@@ -122,7 +114,6 @@
             methods.forEach(method => {
                 methodSelect.options.add(new Option(method.name, method.name))
             });
-            optionsSelect.removeAttribute("disabled");
             submitButton.removeAttribute("disabled");
             updateMethodSelect();
         } else {
@@ -185,14 +176,13 @@
     // Determine which thing the user wants to analyze
     function submitForm(e) {
         e.preventDefault();
-        const selectedInput = optionsSelect.value;
         const selectedMethod = methodSelect.value;
         const methodToAnalyze = methods.find(method => method.name === selectedMethod);
         if (!rawCode) {
             alert("Hubo un error al intentar obtener el codigo del archivo. Por favor intente nuevamente");
         } else {
             resultsList.innerHTML = ``;
-            analizeMethod(methodToAnalyze, rawCode, selectedInput);
+            analizeMethod(methodToAnalyze, rawCode);
         }
     }
 
@@ -294,7 +284,7 @@
         }
 
         if (fanIn >= 10) {
-            alert(`El fanIn para el metodo ${methodName} es alto. Metodo critico/`);
+            alert(`El fanIn para el método ${methodName} es alto. Método critico`);
         }
         return fanIn;
     };
@@ -320,7 +310,7 @@
             ">",
             ";",
             "&&",
-            "|",
+            "||",
             "+",
             "-",
             ",",
@@ -373,53 +363,43 @@
         };
     };
 
-    const analizeMethod = (method, code, selectedInput) => {
+    const analizeMethod = (method, code) => {
         let results = null;
-        let totalLinesAmount, commentsAmount, emptyLinesAmount, codeLinesAmount, commentPercentaje;
+        let totalLinesAmount, commentsAmount, emptyLinesAmount, codeLinesAmount;
         results = "<div>" +
             "<h4>" +
             `ANALISIS DEL METODO "${method.name}"` +
             "</h4>"
-        switch (selectedInput) {
-            case 'linesAnalysis':
-                totalLinesAmount = getTotalLines(method.code);
-                commentsAmount = getCommentedLines(method.code);
-                emptyLinesAmount = getEmptyLines(method.code);
-                codeLinesAmount = getOnlyCodeLines(
-                    method.code,
-                    commentsAmount + emptyLinesAmount
-                );
-                const commentPercentaje = getCommentsPercentage(
-                    commentsAmount,
-                    totalLinesAmount
-                );
-                results +=
-                    "<p>" + `Cantidad de lineas totales: ${totalLinesAmount}` + "</p>" +
-                    "<p>" + `Cantidad de lineas comentadas: ${commentsAmount}` + "</p>" +
-                    "<p>" + `Cantidad de lineas en blanco: ${emptyLinesAmount}` + "</p>" +
-                    "<p>" + `Cantidad de lineas de solo codigo: ${codeLinesAmount}` + "</p>" +
-                    "<p>" + `Porcentaje de comentarios: % ${commentPercentaje}` + "</p>"
-                break;
-            case 'cyclomaticComplexity':
-                const complexity = calculateCiclomaticComplexity(method.code);
-                results += "<p>" + `Complejidad ciclomatica: ${complexity}` + "</p>"
-                break;
-            case 'fanInOut':
-                const fanOut = calculateFanOut(method.code);
-                const fanIn = calculateFanIn(method.name, code);
-                results += "<p>" + `Fan in: ${fanIn}` + "</p>" +
-                    "<p>" + `Fan out: ${fanOut}` + "</p>"
-                break;
-            case 'halstead':
-                const {
-                    longitud,
-                    volumen
-                } = calculateHalsteadMetrics(method.code);
-                results +=
-                    "<p>" + `Halstead - longitud: ${longitud}` + "</p>" +
-                    "<p>" + `Halstead - volumen: ${volumen}` + "</p>"
-                break;
-        }
+        totalLinesAmount = getTotalLines(method.code);
+        commentsAmount = getCommentedLines(method.code);
+        emptyLinesAmount = getEmptyLines(method.code);
+        codeLinesAmount = getOnlyCodeLines(
+            method.code,
+            commentsAmount + emptyLinesAmount
+        );
+        const commentPercentaje = getCommentsPercentage(
+            commentsAmount,
+            totalLinesAmount
+        );
+        results +=
+            "<p>" + `Cantidad de lineas totales: ${totalLinesAmount}` + "</p>" +
+            "<p>" + `Cantidad de lineas comentadas: ${commentsAmount}` + "</p>" +
+            "<p>" + `Cantidad de lineas en blanco: ${emptyLinesAmount}` + "</p>" +
+            "<p>" + `Cantidad de lineas de solo codigo: ${codeLinesAmount}` + "</p>" +
+            "<p>" + `Porcentaje de comentarios: % ${commentPercentaje}` + "</p>"
+        const complexity = calculateCiclomaticComplexity(method.code);
+        results += "<p>" + `Complejidad ciclomatica: ${complexity}` + "</p>"
+        const fanOut = calculateFanOut(method.code);
+        const fanIn = calculateFanIn(method.name, code);
+        results += "<p>" + `Fan in: ${fanIn}` + "</p>" +
+            "<p>" + `Fan out: ${fanOut}` + "</p>"
+        const {
+            longitud,
+            volumen
+        } = calculateHalsteadMetrics(method.code);
+        results +=
+            "<p>" + `Halstead - longitud: ${longitud}` + "</p>" +
+            "<p>" + `Halstead - volumen: ${volumen}` + "</p>"
 
         results += "</div>";
         resultsList.innerHTML += `<div>${results}</div>`;

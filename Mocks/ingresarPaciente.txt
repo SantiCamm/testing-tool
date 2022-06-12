@@ -1,5 +1,5 @@
     public static void ingresarPaciente() throws IOException {
-        int op2;
+        int op2; // variables
         String op;
         String codpac;
         String nompac;
@@ -8,9 +8,9 @@
         String nommed;
         String espmed;
 
-        do
+        do 
         {
-            ps("   ..............................................."+"\n");
+            ps("   ..............................................."+"\n"); // interfaz de ingreso
             ps("   :-: -I N G R E S O  D E  P A C I E N T E S- :-:"+"\n");
             ps("   :-:.........................................:-:"+"\n");
             ps("   :-: 1.  Datos del paciente                  :-:"+"\n");
@@ -20,27 +20,28 @@
             ps("   ..............................................."+"\n");
             ps("   ....Elija la opcion deseada: ");
 
-            op2 = LeerEntero();
+            op2 = LeerEntero(); // lectura de valor
 
-            if (op2 < 1 || op2 > 4)
+            if (op2 < 1 || op2 > 4) // validacion de opcion ingresada
             {
                 ps("Debe digitar una opcion del menu"+"\n");
             }
 
-            switch (op2)
+		
+            switch (op2) // ingreso de datos general
             {
-                case 1:   // ingreso de datos, datos del paciente
+                case 1:   // ingreso datos del paciente
                     DataOutputStream datopac = null;
                     datopac = new DataOutputStream (new FileOutputStream("C:\\datopac.txt"));
                     try
                     {
                         do
                         {
-                            ps("   ..............................................."+"\n");
+                            ps("   ..............................................."+"\n"); // interfaz ingreso de datos del paciente
                             ps("   :-:  - D A T O S  D E L  P A C I E N T E -  :-:"+"\n");
                             ps("   :-:.........................................:-:"+"\n");
 
-                            ps("Digite el codigo del paciente: ");
+                            ps("Digite el codigo del paciente: "); // ingreso de datos
                             codpac = LeerCadena();
                             datopac.writeUTF(codpac);
                             ps("Digite el nombre del paciente: ");
@@ -52,7 +53,7 @@
 
                             op = LeerCadena();
 
-                        } while (op.equals("S") || op.equals("s"));
+                        } while (op.equals("S") || op.equals("s")); // condicion de salida
                         datopac.close();
 
                     }
@@ -61,20 +62,20 @@
 
                     break;
 
-                //ingreso de datos, situación del paciente
-                case 2:
+                
+                case 2: // ingreso de datos, situación del paciente
                     DataOutputStream situpac = null;
-                    situpac=new DataOutputStream (new FileOutputStream("C:\\situpac.txt"));
+                    situpac=new DataOutputStream (new FileOutputStream("C:\\situpac.txt")); // input
 
                     try
                     {
                         do
                         {
-                            ps("   ....................................................."+"\n");
+                            ps("   ....................................................."+"\n"); // interfaz de datos del paciente
                             ps("   :-: - S I T U A C I O N  D E L  P A C I E N T E - :-:"+"\n");
                             ps("   :-:...............................................:-:"+"\n");
 
-                            ps("Digite el codigo del paciente: ");
+                            ps("Digite el codigo del paciente: "); // ingreso de datos
                             codpac = LeerCadena();
                             situpac.writeUTF(codpac);
                             ps("Digite el codigo del medico: ");
@@ -88,7 +89,7 @@
                             ps("\n");
                             op = LeerCadena();
 
-                        } while (op.equals("S") || op.equals("s"));
+                        } while (op.equals("S") || op.equals("s")); // condicion de salida
 
                         situpac.close();
 
@@ -97,7 +98,7 @@
 
                     break;
 
-                case 3:
+                case 3: // ingreso datos del medico
                     DataOutputStream datomed = null;
                     datomed=new DataOutputStream (new FileOutputStream("C:\\datomed.txt"));
                     try
@@ -125,7 +126,7 @@
 
                             op = LeerCadena();
 
-                        } while (op.equals("S") || op.equals("s"));
+                        } while (op.equals("S") || op.equals("s")); // condicion de salida
                     }
                     catch(IOException ioe) {
                     }
